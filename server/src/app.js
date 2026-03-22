@@ -11,6 +11,12 @@ const paymentRoutes = require('./routes/payment');
 
 const app = express();
 
+app.use((req, res, next) => {
+  // Log mỗi request đến server
+  console.log(`[REQUEST START] ${new Date().toISOString()} | ${req.method} ${req.originalUrl || req.url}`);
+  next();
+});
+
 app.use(
   cors({
     origin: '*',
@@ -22,12 +28,14 @@ app.use(
 app.use(express.json());
 
 // Middleware kết nối Database cho môi trường Serverless (Vercel)
-app.use(async (_req, _res, next) => {
+app.use(async (req, _res, next) => {
   try {
+    console.log(`[DB CHECK] ${new Date().toISOString()} | Checking connection for ${req.url}...`);
     await connectDB();
-    // console.log('DB Check passed'); // Log kiểm tra
+    console.log(`[DB CHECK] ${new Date().toISOString()} | Connection Ready. Proceeding.`);
     next();
   } catch (error) {
+    console.error(`[DB ERROR] ${new Date().toISOString()} | Failed to connect:`, error);
     next(error);
   }
 });
@@ -38,13 +46,18 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/movies', moviesRoutes);
+app.use('/api/movies', (req, res, next) => {
+  // Log xác nhận request đã đi qua tầng DB và vào tới router phim
+  console.log(`[ROUTE] ${new Date().toISOString()} | Entering moviesRoutes handler...`);
+  next();
+}, moviesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/payment', paymentRoutes);
 
 app.use((err, _req, res, _next) => {
+  console.error('[SERVER ERROR]', err);
   res.status(500).json({ error: err.message || 'Server error' });
 });
 
