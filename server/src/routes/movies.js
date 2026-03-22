@@ -29,17 +29,24 @@ function playbackAccess(user, movie) {
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
+    console.log(`[MOVIES] ${new Date().toISOString()} | Start fetching list. Query:`, req.query);
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(64, Math.max(1, Number(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    
+    const start = Date.now();
     const [items, total] = await Promise.all([
       Movie.find({ isActive: true })
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
-      Movie.countDocuments({ isActive: true })
+        .lean()
+        .maxTimeMS(8000), // Timeout query sau 8s để tránh treo Vercel
+      Movie.countDocuments({ isActive: true }).maxTimeMS(8000)
     ]);
+    
+    console.log(`[MOVIES] Query done in ${Date.now() - start}ms. Found ${items.length} items.`);
+    
     res.json({
       items: items.map((m) => ({
         id: m._id,
@@ -56,6 +63,7 @@ router.get('/', optionalAuth, async (req, res) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 }
     });
   } catch (e) {
+    console.error(`[MOVIES ERROR]`, e);
     res.status(500).json({ error: e.message });
   }
 });
