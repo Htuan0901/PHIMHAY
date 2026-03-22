@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./db');
 
 const authRoutes = require('./routes/auth');
 const moviesRoutes = require('./routes/movies');
@@ -19,6 +20,16 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Middleware kết nối Database cho môi trường Serverless (Vercel)
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get('/api/health', (_req, res) => {
   const mongoose = require('mongoose');
