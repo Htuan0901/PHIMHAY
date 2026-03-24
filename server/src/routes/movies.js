@@ -132,7 +132,10 @@ router.get('/filters', async (req, res) => {
       Movie.distinct('type', { isActive: true, type: { $ne: '' } }),
       Movie.distinct('country', { isActive: true, country: { $ne: '' } })
     ]);
-    const allCountries = countries.flatMap((c) => c.split(', ')).filter(Boolean);
+    const allCountries = countries
+      .flatMap((c) => c.split(','))
+      .map((c) => c.trim())
+      .filter(Boolean);
     const uniqueCountries = [...new Set(allCountries)];
     res.json({ types, countries: uniqueCountries });
   } catch (e) {
