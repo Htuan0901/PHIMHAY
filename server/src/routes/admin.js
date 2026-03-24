@@ -20,6 +20,7 @@ router.post('/movies/import', async (req, res) => {
     if (exists) return res.status(409).json({ error: 'Slug đã có trong hệ thống' });
     const data = await fetchMovieBySlug(slug);
     const m = data.movie;
+    const country = (m.country || []).map((c) => c.name).join(', ');
     const doc = await Movie.create({
       slug: m.slug,
       title: m.name,
@@ -29,6 +30,7 @@ router.post('/movies/import', async (req, res) => {
       year: m.year || null,
       type: m.type || '',
       content: m.content || '',
+      country,
       viewStatus: Movie.VIEW_NORMAL,
       commentRatingPolicy: 'public',
       externalId: m._id ? String(m._id) : ''

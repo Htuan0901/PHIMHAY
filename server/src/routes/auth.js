@@ -9,9 +9,16 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   try {
     const { email, password, displayName } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email và mật khẩu là bắt buộc' });
-    const exists = await User.findOne({ email: String(email).toLowerCase() });
-    if (exists) return res.status(409).json({ error: 'Email đã được dùng' });
+    if (!email || !password || !displayName)
+      return res.status(400).json({ error: 'Email, mật khẩu và tên đăng nhập là bắt buộc' });
+    const lowerEmail = String(email).toLowerCase();
+    const emailExists = await User.findOne({ email: lowerEmail });
+    if (emailExists) return res.status(409).json({ error: 'Email đã được dùng' });
+
+    const lowerDisplayName = String(displayName).toLowerCase().trim();
+    const displayNameExists = await User.findOne({ displayName: lowerDisplayName });
+    if (displayNameExists) return res.status(409).json({ error: 'Tên đăng nhập đã được dùng' });
+
     const passwordHash = await bcrypt.hash(password, 10);
     const adminSecret = req.headers['x-admin-secret'];
     const isAdmin =
@@ -19,9 +26,9 @@ router.post('/register', async (req, res) => {
       adminSecret &&
       String(adminSecret) === String(config.initialAdminSecret);
     const user = await User.create({
-      email: String(email).toLowerCase(),
+      email: lowerEmail,
       passwordHash,
-      displayName: displayName || '',
+      displayName: lowerDisplayName,
       isAdmin: !!isAdmin
     });
     const token = signToken(user);
@@ -43,10 +50,13 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email: String(email || '').toLowerCase() });
+    const { identifier, password } = req.body;
+    const lowerIdentifier = String(identifier || '').toLowerCase();
+    const user = await User.findOne({
+      $or: [{ email: lowerIdentifier }, { displayName: lowerIdentifier }]
+    });
     if (!user || !(await bcrypt.compare(password || '', user.passwordHash))) {
-      return res.status(401).json({ error: 'Sai email hoặc mật khẩu' });
+      return res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu' });
     }
     const token = signToken(user);
     res.json({

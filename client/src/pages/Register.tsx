@@ -46,8 +46,8 @@ export function Register() {
             />
           </label>
           <label>
-            Tên hiển thị (tuỳ chọn)
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            Tên đăng nhập
+            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
           </label>
           <label>
             Admin secret (chỉ dùng lần đầu, nếu có)

@@ -14,6 +14,7 @@ const movieSchema = new mongoose.Schema(
     year: { type: Number, default: null },
     type: { type: String, default: '' },
     content: { type: String, default: '' },
+    country: { type: String, default: '' },
     /** 0 = normal+Vip xem; 1 = chỉ VIP */
     viewStatus: { type: Number, enum: [VIEW_NORMAL, VIEW_VIP], default: VIEW_NORMAL },
     /**

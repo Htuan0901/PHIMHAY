@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
-    displayName: { type: String, default: '' },
+    displayName: { type: String, required: true, unique: 'Tên đăng nhập đã được dùng', trim: true, lowercase: true },
     isAdmin: { type: Boolean, default: false },
     isVip: { type: Boolean, default: false },
     vipExpiresAt: { type: Date, default: null }

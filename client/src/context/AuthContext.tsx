@@ -21,7 +21,7 @@ export type User = {
 type AuthState = {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
   register: (email: string, password: string, displayName?: string, adminSecret?: string) => Promise<void>
   logout: () => void
   refreshMe: () => Promise<void>
@@ -55,10 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshMe()
   }, [refreshMe])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (identifier: string, password: string) => {
     const data = await api<{ token: string; user: User }>('/api/auth/login', {
       method: 'POST',
-      json: { email, password },
+      json: { identifier, password },
     })
     setToken(data.token)
     setUser(data.user)

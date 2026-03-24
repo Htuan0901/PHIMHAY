@@ -27,26 +27,34 @@ function playbackAccess(user, movie) {
   return { canWatch: true, reason: vip ? 'vip' : 'normal' };
 }
 
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/search', async (req, res) => {
   try {
-    console.log(`[MOVIES] ${new Date().toISOString()} | Start fetching list. Query:`, req.query);
+    const q = req.query.q || '';
+    if (!q) {
+      return res.json({ items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } });
+    }
+
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(64, Math.max(1, Number(req.query.limit) || 20));
     const skip = (page - 1) * limit;
-    
-    const start = Date.now();
+
+    const query = {
+      isActive: true,
+      $or: [
+        { title: { $regex: q, $options: 'i' } },
+        { originName: { $regex: q, $options: 'i' } },
+      ],
+    };
+
     const [items, total] = await Promise.all([
-      Movie.find({ isActive: true })
+      Movie.find(query)
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean()
-        .maxTimeMS(8000), // Timeout query sau 8s để tránh treo Vercel
-      Movie.countDocuments({ isActive: true }).maxTimeMS(8000)
+        .lean(),
+      Movie.countDocuments(query),
     ]);
-    
-    console.log(`[MOVIES] Query done in ${Date.now() - start}ms. Found ${items.length} items.`);
-    
+
     res.json({
       items: items.map((m) => ({
         id: m._id,
@@ -58,12 +66,76 @@ router.get('/', optionalAuth, async (req, res) => {
         year: m.year,
         type: m.type,
         viewStatus: m.viewStatus,
+        commentRatingPolicy: m.commentRatingPolicy,
+      })),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
+    });
+  } catch (e) {
+    console.error(`[MOVIES SEARCH ERROR]`, e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/', optionalAuth, async (req, res) => {
+  try {
+    console.log(`[MOVIES] ${new Date().toISOString()} | Start fetching list. Query:`, req.query);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(64, Math.max(1, Number(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = { isActive: true };
+    if (req.query.type) {
+      query.type = String(req.query.type);
+    }
+    if (req.query.country) {
+      query.country = { $regex: String(req.query.country), $options: 'i' };
+    }
+
+    const start = Date.now();
+    const [items, total] = await Promise.all([
+      Movie.find(query)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .maxTimeMS(8000), // Timeout query sau 8s để tránh treo Vercel
+      Movie.countDocuments(query).maxTimeMS(8000)
+    ]);
+
+    console.log(`[MOVIES] Query done in ${Date.now() - start}ms. Found ${items.length} items.`);
+
+    res.json({
+      items: items.map((m) => ({
+        id: m._id,
+        slug: m.slug,
+        title: m.title,
+        originName: m.originName,
+        posterUrl: m.posterUrl,
+        thumbUrl: m.thumbUrl,
+        year: m.year,
+        type: m.type,
+        country: m.country,
+        viewStatus: m.viewStatus,
         commentRatingPolicy: m.commentRatingPolicy
       })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 }
     });
   } catch (e) {
     console.error(`[MOVIES ERROR]`, e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/filters', async (req, res) => {
+  try {
+    const [types, countries] = await Promise.all([
+      Movie.distinct('type', { isActive: true, type: { $ne: '' } }),
+      Movie.distinct('country', { isActive: true, country: { $ne: '' } })
+    ]);
+    const allCountries = countries.flatMap((c) => c.split(', ')).filter(Boolean);
+    const uniqueCountries = [...new Set(allCountries)];
+    res.json({ types, countries: uniqueCountries });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });

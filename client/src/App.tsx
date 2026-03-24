@@ -8,6 +8,7 @@ import { MovieDetail } from './pages/MovieDetail'
 import { Admin } from './pages/Admin'
 import { Vip } from './pages/Vip'
 import { PaymentReturn } from './pages/PaymentReturn'
+import { WatchPage } from './pages/WatchPage'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/phim/:slug" element={<MovieDetail />} />
+            <Route path="/xem-phim/:slug" element={<WatchPage />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/vip" element={<Vip />} />
             <Route path="/payment/return" element={<PaymentReturn />} />

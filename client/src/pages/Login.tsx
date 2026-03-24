@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export function Login() {
   const { login } = useAuth()
   const nav = useNavigate()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -15,7 +15,7 @@ export function Login() {
     setErr(null)
     setBusy(true)
     try {
-      await login(email, password)
+      await login(identifier, password)
       nav('/')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Lỗi')
@@ -30,8 +30,14 @@ export function Login() {
         <h1>Đăng nhập</h1>
         <form onSubmit={onSubmit}>
           <label>
-            Email
-            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required autoComplete="email" />
+            Tên đăng nhập hoặc Email
+            <input
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              type="text"
+              required
+              autoComplete="username"
+            />
           </label>
           <label>
             Mật khẩu

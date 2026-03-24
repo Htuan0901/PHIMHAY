@@ -1,5 +1,37 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useState, useEffect } from 'react'
+
+function SearchForm() {
+  const nav = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [q, setQ] = useState(searchParams.get('q') || '')
+
+  useEffect(() => {
+    setQ(searchParams.get('q') || '')
+  }, [searchParams])
+
+  function onSearch(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = q.trim()
+    if (trimmed) {
+      nav(`/?q=${encodeURIComponent(trimmed)}`)
+    } else {
+      nav('/')
+    }
+  }
+
+  return (
+    <form onSubmit={onSearch} className="search-form">
+      <input
+        type="search"
+        placeholder="Tìm kiếm phim..."
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+    </form>
+  )
+}
 
 export function Layout() {
   const { user, logout } = useAuth()
@@ -12,10 +44,11 @@ export function Layout() {
           <Link to="/" className="logo">
             PHIM<span>HAY</span>
           </Link>
+          <SearchForm />
           <nav className="top-nav__links">
             <Link to="/">Trang chủ</Link>
             {user?.isAdmin && <Link to="/admin">Admin</Link>}
-            {user && (
+            {user && !user.isAdmin && !user.isVip && (
               <Link to="/vip" className="vip-link">
                 Nâng VIP
               </Link>
@@ -30,8 +63,16 @@ export function Layout() {
             )}
             {user && (
               <>
-                <span className="muted user-email">{user.email}</span>
-                {user.isVip && <span className="badge-vip">VIP</span>}
+                <span className="muted user-email">{user.displayName || user.email}</span>
+                {user.isVip && (
+                  <span className="badge-vip">
+                    VIP
+                    {user.vipExpiresAt &&
+                      ` (Hết hạn: ${new Date(
+                        user.vipExpiresAt
+                      ).toLocaleDateString()})`}
+                  </span>
+                )}
                 <button
                   type="button"
                   className="btn btn-ghost btn--sm"
@@ -74,6 +115,22 @@ export function Layout() {
         }
         .logo span {
           color: #fff;
+        }
+        .search-form {
+          flex-grow: 1;
+          max-width: 400px;
+        }
+        .search-form input {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid #444;
+          border-radius: 20px;
+          padding: 0.5rem 1rem;
+          color: #fff;
+          font-size: 0.9rem;
+        }
+        .search-form input::placeholder {
+          color: #aaa;
         }
         .top-nav__links {
           display: flex;

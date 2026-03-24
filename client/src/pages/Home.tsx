@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,6 +11,7 @@ type MovieItem = {
   thumbUrl: string
   year: number | null
   viewStatus: number
+  country: string | null
 }
 
 type ListRes = {
@@ -18,23 +19,68 @@ type ListRes = {
   pagination: { page: number; totalPages: number; total: number }
 }
 
+type Filters = {
+  types: string[]
+  countries: string[]
+}
+
 export function Home() {
   const { user } = useAuth()
   const [data, setData] = useState<ListRes | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const q = searchParams.get('q')
+  const type = searchParams.get('type')
+  const country = searchParams.get('country')
+  const [filters, setFilters] = useState<Filters | null>(null)
 
   useEffect(() => {
-    api<ListRes>('/api/movies?page=1&limit=24')
-      .then(setData)
-      .catch((e: Error) => setErr(e.message))
+    api<Filters>('/api/movies/filters')
+      .then(setFilters)
+      .catch(() => {
+        /* ignore */
+      })
   }, [])
 
-  const hero = data?.items[0]
+  useEffect(() => {
+    setData(null)
+    setErr(null)
+    const page = searchParams.get('page') || '1'
+    let url = `/api/movies?page=${page}&limit=24`
+    const params = new URLSearchParams()
+    params.set('page', page)
+    params.set('limit', '24')
+
+    if (q) {
+      url = `/api/movies/search?q=${encodeURIComponent(q)}&page=${page}&limit=24`
+    } else {
+      if (type) params.set('type', type)
+      if (country) params.set('country', country)
+      url = `/api/movies?${params.toString()}`
+    }
+
+    api<ListRes>(url)
+      .then(setData)
+      .catch((e: Error) => setErr(e.message))
+  }, [q, searchParams, type, country])
+
+  const heroMovies = !q && data?.items.slice(0, 5)
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0)
+
+  useEffect(() => {
+    if (!heroMovies || heroMovies.length < 2) return
+    const timer = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % heroMovies.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [heroMovies])
+
+  const hero = heroMovies && heroMovies[currentHeroIndex]
 
   return (
     <div className="home">
       {hero && (
-        <section className="hero-banner">
+        <section key={hero.id} className="hero-banner hero-banner-fade">
           <div
             className="hero-banner__bg"
             style={{
@@ -55,17 +101,67 @@ export function Home() {
       )}
 
       <section className="page home-rows">
-        {!user && (
+        {!user && !q && (
           <p className="guest-hint muted">
-            Bạn đang xem dạng khách — duyệt danh sách được. Đăng nhập để xem phim; VIP để xem toàn bộ nội dung VIP.
+            Bạn đang xem dạng khách — duyệt danh sách được. Đang nhập để xem phim; VIP để xem toàn bộ nội dung VIP.
           </p>
         )}
         {err && <p className="error-text">{err}</p>}
         {!data && !err && <p className="muted">Đang tải…</p>}
-        {data && data.items.length === 0 && <p className="muted">Chưa có phim trong catalog. Admin hãy import từ phimapi.</p>}
+
+        {filters && !q && (
+          <div className="filters">
+            <select
+              value={type || ''}
+              onChange={(e) => {
+                const newParams = new URLSearchParams(searchParams)
+                if (e.target.value) newParams.set('type', e.target.value)
+                else newParams.delete('type')
+                newParams.set('page', '1')
+                setSearchParams(newParams)
+              }}
+            >
+              <option value="">Thể loại</option>
+              {filters.types.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            <select
+              value={country || ''}
+              onChange={(e) => {
+                const newParams = new URLSearchParams(searchParams)
+                if (e.target.value) newParams.set('country', e.target.value)
+                else newParams.delete('country')
+                newParams.set('page', '1')
+                setSearchParams(newParams)
+              }}
+            >
+              <option value="">Quốc gia</option>
+              {filters.countries.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {q && (
+          <h2 className="row-title" style={{ marginTop: '1rem' }}>
+            Kết quả tìm kiếm cho "{q}"
+          </h2>
+        )}
+
+        {data && data.items.length === 0 && (
+          <p className="muted" style={{ marginTop: '1rem' }}>
+            {q ? 'Không tìm thấy kết quả nào.' : 'Chưa có phim trong catalog. Admin hãy import từ phimapi.'}
+          </p>
+        )}
         {data && data.items.length > 0 && (
           <>
-            <h2 className="row-title">Danh sách phim</h2>
+            {!q && <h2 className="row-title">Danh sách phim</h2>}
             <div className="grid-posters">
               {data.items.map((m) => (
                 <Link key={m.id} to={`/phim/${m.slug}`} className="poster-card">
@@ -77,10 +173,32 @@ export function Home() {
                 </Link>
               ))}
             </div>
+            <div className="pagination">
+              {data.pagination.page > 1 && (
+                <Link to={`/?page=${data.pagination.page - 1}`} className="btn btn-primary">
+                  Trang trước
+                </Link>
+              )}
+              <span className="page-info">
+                Trang {data.pagination.page} / {data.pagination.totalPages}
+              </span>
+              {data.pagination.page < data.pagination.totalPages && (
+                <Link to={`/?page=${data.pagination.page + 1}`} className="btn btn-primary">
+                  Trang sau
+                </Link>
+              )}
+            </div>
           </>
         )}
       </section>
       <style>{`
+        @keyframes herofade {
+          from { opacity: 0.8; }
+          to { opacity: 1; }
+        }
+        .hero-banner-fade {
+          animation: herofade 0.5s;
+        }
         .home {
           min-height: 100vh;
         }
@@ -124,6 +242,11 @@ export function Home() {
         .guest-hint {
           margin-bottom: 1.25rem;
           max-width: 640px;
+        }
+        .filters {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
         }
         .row-title {
           margin: 0 0 1rem;
@@ -171,6 +294,13 @@ export function Home() {
         .pill-vip {
           background: #f5c518;
           color: #111;
+        }
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 1rem;
+          gap: 1rem;
         }
       `}</style>
     </div>

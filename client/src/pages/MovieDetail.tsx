@@ -28,7 +28,7 @@ type CommentItem = {
   id: string
   body: string
   createdAt: string
-  user: { displayName: string; email: string } | null
+  user: { id: string; displayName: string; email: string } | null
 }
 
 type RatingRes = {
@@ -43,14 +43,13 @@ export function MovieDetail() {
   const { user } = useAuth()
   const [detail, setDetail] = useState<DetailRes | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [srvIdx, setSrvIdx] = useState(0)
-  const [epIdx, setEpIdx] = useState(0)
   const [comments, setComments] = useState<CommentItem[] | null>(null)
   const [commentsErr, setCommentsErr] = useState<string | null>(null)
   const [ratings, setRatings] = useState<RatingRes | null>(null)
   const [ratingsErr, setRatingsErr] = useState<string | null>(null)
   const [newComment, setNewComment] = useState('')
   const [stars, setStars] = useState(5)
+  const [hoverStars, setHoverStars] = useState(0)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -62,9 +61,6 @@ export function MovieDetail() {
   }, [slug])
 
   const m = detail?.movie
-  const server = m?.episodes?.[srvIdx]
-  const episode = server?.server_data?.[epIdx]
-  const embedUrl = episode?.link_embed || ''
 
   useEffect(() => {
     if (!m?.id) return
@@ -123,6 +119,19 @@ export function MovieDetail() {
     }
   }
 
+  async function handleDeleteComment(id: string) {
+    if (!window.confirm('Xóa bình luận này?')) return
+    setBusy(true)
+    try {
+      await api(`/api/comments/${id}`, { method: 'DELETE' })
+      setComments((prev) => (prev || []).filter((c) => c.id !== id))
+    } catch (e) {
+      setCommentsErr(e instanceof Error ? e.message : 'Lỗi')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="page movie-page">
       {err && <p className="error-text">{err}</p>}
@@ -162,38 +171,11 @@ export function MovieDetail() {
           )}
 
           {m.canWatch && m.episodes?.length > 0 && (
-            <section className="player-block">
-              <h2>Xem phim</h2>
-              <div className="select-row">
-                <label>
-                  Server
-                  <select value={srvIdx} onChange={(e) => { setSrvIdx(Number(e.target.value)); setEpIdx(0) }}>
-                    {m.episodes.map((s, i) => (
-                      <option key={s.server_name} value={i}>
-                        {s.server_name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Tập
-                  <select value={epIdx} onChange={(e) => setEpIdx(Number(e.target.value))}>
-                    {(server?.server_data || []).map((ep, i) => (
-                      <option key={ep.slug} value={i}>
-                        {ep.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              {embedUrl ? (
-                <div className="iframe-wrap">
-                  <iframe title="player" src={embedUrl} allowFullScreen />
-                </div>
-              ) : (
-                <p className="muted">Không có link phát.</p>
-              )}
-            </section>
+            <div className="watch-button-container">
+              <Link to={`/xem-phim/${m.slug}`} className="btn btn-primary btn-watch">
+                Xem phim
+              </Link>
+            </div>
           )}
 
           <section className="reviews">
@@ -209,16 +191,21 @@ export function MovieDetail() {
                 </p>
                 {user && (
                   <form className="rating-form" onSubmit={submitRating}>
-                    <label>
-                      Sao của bạn (1–5)
-                      <select value={stars} onChange={(e) => setStars(Number(e.target.value))}>
+                    <div className="star-rating">
+                      <label>Sao của bạn (1–5)</label>
+                      <div onMouseLeave={() => setHoverStars(0)}>
                         {[1, 2, 3, 4, 5].map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
+                          <span
+                            key={n}
+                            className={n <= (hoverStars || stars) ? 'star active' : 'star'}
+                            onClick={() => setStars(n)}
+                            onMouseEnter={() => setHoverStars(n)}
+                          >
+                            ★
+                          </span>
                         ))}
-                      </select>
-                    </label>
+                      </div>
+                    </div>
                     <button type="submit" className="btn btn-primary" disabled={busy}>
                       Gửi đánh giá
                     </button>
@@ -248,6 +235,16 @@ export function MovieDetail() {
                 <li key={c.id}>
                   <strong>{c.user?.displayName || c.user?.email || 'User'}</strong>
                   <span className="muted"> — {new Date(c.createdAt).toLocaleString()}</span>
+                  {user && (c.user?.id === user.id || user.isAdmin) && (
+                    <button
+                      onClick={() => handleDeleteComment(c.id)}
+                      className="btn btn-danger btn-sm"
+                      disabled={busy}
+                      style={{ marginLeft: '1rem' }}
+                    >
+                      Xóa
+                    </button>
+                  )}
                   <p>{c.body}</p>
                 </li>
               ))}
@@ -297,36 +294,12 @@ export function MovieDetail() {
           align-items: center;
           gap: 1rem;
         }
-        .player-block {
-          margin-bottom: 2rem;
+        .watch-button-container {
+          margin: 1.5rem 0;
         }
-        .select-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-          margin-bottom: 0.75rem;
-        }
-        .select-row select {
-          display: block;
-          margin-top: 0.35rem;
-          min-width: 200px;
-        }
-        .iframe-wrap {
-          position: relative;
-          padding-bottom: 56.25%;
-          height: 0;
-          overflow: hidden;
-          border-radius: 8px;
-          border: 1px solid #333;
-          background: #000;
-        }
-        .iframe-wrap iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border: 0;
+        .btn-watch {
+          font-size: 1.2rem;
+          padding: 0.8rem 2rem;
         }
         .comment-form textarea {
           margin-bottom: 0.5rem;
@@ -347,7 +320,23 @@ export function MovieDetail() {
           align-items: flex-end;
           margin-top: 0.5rem;
         }
+        .star-rating {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .star-rating .star {
+          color: #555;
+          cursor: pointer;
+          font-size: 1.5rem;
+          transition: color 0.2s;
+        }
+        .star-rating .star.active,
+        .star-rating .star:hover {
+          color: #f5c518;
+        }
       `}</style>
     </div>
   )
 }
+

@@ -58,7 +58,7 @@ export function Admin() {
   }
 
   async function remove(id: string) {
-    if (!confirm('Xóa phim khỏi catalog?')) return
+    if (!confirm('Bạn có chắc chắn muốn xóa không?')) return
     setErr(null)
     try {
       await api(`/api/admin/movies/${id}`, { method: 'DELETE' })
