@@ -19,28 +19,15 @@ type ListRes = {
   pagination: { page: number; totalPages: number; total: number }
 }
 
-type Filters = {
-  types: string[]
-  countries: string[]
-}
 
 export function Home() {
   const { user } = useAuth()
   const [data, setData] = useState<ListRes | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const q = searchParams.get('q')
   const type = searchParams.get('type')
   const country = searchParams.get('country')
-  const [filters, setFilters] = useState<Filters | null>(null)
-
-  useEffect(() => {
-    api<Filters>('/api/movies/filters')
-      .then(setFilters)
-      .catch(() => {
-        /* ignore */
-      })
-  }, [])
 
   useEffect(() => {
     setData(null)
@@ -108,45 +95,6 @@ export function Home() {
         )}
         {err && <p className="error-text">{err}</p>}
         {!data && !err && <p className="muted">Đang tải…</p>}
-
-        {filters && !q && (
-          <div className="filters">
-            <select
-              value={type || ''}
-              onChange={(e) => {
-                const newParams = new URLSearchParams(searchParams)
-                if (e.target.value) newParams.set('type', e.target.value)
-                else newParams.delete('type')
-                newParams.set('page', '1')
-                setSearchParams(newParams)
-              }}
-            >
-              <option value="">Thể loại</option>
-              {filters.types.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <select
-              value={country || ''}
-              onChange={(e) => {
-                const newParams = new URLSearchParams(searchParams)
-                if (e.target.value) newParams.set('country', e.target.value)
-                else newParams.delete('country')
-                newParams.set('page', '1')
-                setSearchParams(newParams)
-              }}
-            >
-              <option value="">Quốc gia</option>
-              {filters.countries.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {q && (
           <h2 className="row-title" style={{ marginTop: '1rem' }}>

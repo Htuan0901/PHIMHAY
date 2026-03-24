@@ -1,6 +1,7 @@
 import { Link, Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useState, useEffect } from 'react'
+import { FilterDropdowns } from './FilterDropdowns'
 
 function SearchForm() {
   const nav = useNavigate()
@@ -45,6 +46,7 @@ export function Layout() {
             PHIM<span>HAY</span>
           </Link>
           <SearchForm />
+          <FilterDropdowns />
           <nav className="top-nav__links">
             <Link to="/">Trang chủ</Link>
             {user?.isAdmin && <Link to="/admin">Admin</Link>}
