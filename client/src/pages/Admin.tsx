@@ -374,6 +374,9 @@ export function Admin() {
   const [categoryBusy, setCategoryBusy] = useState(false)
   const [editingCategory, setEditingCategory] = useState<CategoryDoc | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [selectedSeriesMovieIds, setSelectedSeriesMovieIds] = useState<string[]>([])
+  const [seriesBusy, setSeriesBusy] = useState(false)
+  const [seriesMessage, setSeriesMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const apiBaseUrl = useMemo(() => (import.meta.env.VITE_API_URL ?? '').trim(), [])
@@ -517,6 +520,31 @@ export function Admin() {
       setAssignMessage(e instanceof Error ? e.message : 'Cập nhật category thất bại')
     } finally {
       setAssignBusy(false)
+    }
+  }
+
+  async function linkMoviesAsSeries(e: FormEvent) {
+    e.preventDefault()
+    if (selectedSeriesMovieIds.length < 2) {
+      setSeriesMessage('Vui lòng chọn ít nhất 2 phim để liên kết.')
+      return
+    }
+    setSeriesBusy(true)
+    setSeriesMessage(null)
+    try {
+      // Dùng ID của phim đầu tiên làm ID cho series
+      const mainMovieId = selectedSeriesMovieIds[0]
+      await api(`/api/movies/${mainMovieId}/assign-series`, {
+        method: 'POST',
+        json: { movieIds: selectedSeriesMovieIds },
+      })
+      setSeriesMessage('Liên kết phim thành series thành công!')
+      setSelectedSeriesMovieIds([])
+      await load() // Tải lại danh sách phim để cập nhật
+    } catch (e) {
+      setSeriesMessage(e instanceof Error ? e.message : 'Liên kết phim thất bại.')
+    } finally {
+      setSeriesBusy(false)
     }
   }
 
@@ -665,6 +693,30 @@ export function Admin() {
             {assignBusy ? 'Đang cập nhật...' : 'Lưu category cho phim'}
           </button>
           {assignMessage && <p className="success-text">{assignMessage}</p>}
+        </form>
+      </section>
+
+      <section className="category-section">
+        <h2>Liên kết phim thành series</h2>
+        <p className="muted">
+          Chọn các phim (ví dụ: P1, P2) để nhóm chúng lại. Phim đầu tiên trong danh sách chọn sẽ
+          được dùng làm ID định danh cho series.
+        </p>
+        <form onSubmit={linkMoviesAsSeries} className="category-form">
+          <label>
+            Chọn các phim để liên kết
+            <MovieSearchMultiSelect
+              movies={items}
+              selectedIds={selectedSeriesMovieIds}
+              onChange={setSelectedSeriesMovieIds}
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={seriesBusy}>
+            {seriesBusy ? 'Đang xử lý...' : 'Liên kết thành series'}
+          </button>
+          {seriesMessage && (
+            <p className={seriesMessage.includes('thất bại') ? 'error-text' : 'success-text'}>{seriesMessage}</p>
+          )}
         </form>
       </section>
 

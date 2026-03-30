@@ -167,6 +167,23 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     const effectiveUser = req.user || null;
     const access = playbackAccess(effectiveUser, movie);
 
+    let seriesParts = [];
+    if (movie.seriesId) {
+      const parts = await Movie.find({
+        seriesId: movie.seriesId,
+        isActive: true,
+      })
+        .sort({ year: 1, createdAt: 1 })
+        .lean();
+      seriesParts = parts.map(p => ({
+        id: p._id,
+        title: p.title,
+        slug: p.slug,
+        year: p.year,
+        posterUrl: p.posterUrl,
+      }));
+    }
+
     let phimapiData = null;
     if (access.canWatch) {
       try {
@@ -189,7 +206,8 @@ router.get('/:slug', optionalAuth, async (req, res) => {
       viewStatus: movie.viewStatus,
       commentRatingPolicy: movie.commentRatingPolicy,
       canWatch: access.canWatch,
-      accessReason: access.reason
+      accessReason: access.reason,
+      series: seriesParts,
     };
 
     if (!phimapiData) {
@@ -197,7 +215,7 @@ router.get('/:slug', optionalAuth, async (req, res) => {
         movie: {
           ...base,
           trailer_url: '',
-          episodes: []
+          episodes: [],
         }
       });
     }

@@ -6,12 +6,20 @@ import { useAuth } from '../context/AuthContext'
 type Ep = { name: string; slug: string; link_embed: string; link_m3u8: string }
 type EpisodeServer = { server_name: string; server_data: Ep[] }
 
+type SeriesPart = {
+  id: string
+  slug: string
+  title: string
+  year: number | null
+}
+
 type MovieDetail = {
   id: string
   slug: string
   title: string
   canWatch: boolean
   accessReason: string
+  series: SeriesPart[]
   episodes: EpisodeServer[]
   commentRatingPolicy: 'public' | 'members'
 }
@@ -220,6 +228,24 @@ export function WatchPage() {
         </section>
       )}
 
+      {m?.series && m.series.length > 1 && (
+        <section className="series-parts">
+          <div className="button-group-label">Các phần khác</div>
+          <div className="button-group">
+            {m.series.map((part) => (
+              <Link
+                key={part.id}
+                to={`/xem-phim/${part.slug}`}
+                className={`btn ${part.id === m.id ? 'btn-primary' : 'btn-ghost'}`}
+                title={part.title}
+              >
+                {part.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {m?.canWatch && canViewComments && (
         <section className="reviews">
           <h2>Đánh giá & Bình luận</h2>
@@ -311,6 +337,10 @@ export function WatchPage() {
         }
         .player-block {
           margin-bottom: 2rem;
+        }
+        .series-parts {
+          margin-top: 1.5rem;
+          margin-bottom: 1.5rem;
         }
         .button-group-label {
           font-size: 0.9rem;

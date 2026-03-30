@@ -6,6 +6,14 @@ import { useAuth } from '../context/AuthContext'
 type Ep = { name: string; slug: string; link_embed: string; link_m3u8: string }
 type EpisodeServer = { server_name: string; server_data: Ep[] }
 
+type SeriesPart = {
+  id: string
+  slug: string
+  title: string
+  year: number | null
+  posterUrl: string
+}
+
 type MovieDetail = {
   id: string
   slug: string
@@ -19,6 +27,7 @@ type MovieDetail = {
   canWatch: boolean
   accessReason: string
   trailer_url?: string
+  series: SeriesPart[]
   episodes: EpisodeServer[]
 }
 
@@ -170,6 +179,27 @@ export function MovieDetail() {
             </div>
           )}
 
+          {m.series && m.series.length > 1 && (
+            <section className="series-parts">
+              <h2>Các phần trong series</h2>
+              <div className="grid-posters">
+                {m.series.map((part) => (
+                  <Link
+                    key={part.id}
+                    to={`/phim/${part.slug}`}
+                    className={`poster-card ${part.id === m.id ? 'current' : ''}`}
+                    title={part.title}
+                  >
+                    <img src={part.posterUrl} alt={part.title} loading="lazy" />
+                    <div className="poster-card__meta">
+                      <span className="poster-title">{part.title}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {m.canWatch && m.episodes?.length > 0 && (
             <div className="watch-button-container">
               <Link to={`/xem-phim/${m.slug}`} className="btn btn-primary btn-watch">
@@ -273,6 +303,45 @@ export function MovieDetail() {
           white-space: pre-wrap;
           line-height: 1.45;
         }
+        .series-parts {
+          margin: 2.5rem 0;
+        }
+        .series-parts h2 {
+          margin-bottom: 1rem;
+        }
+        .grid-posters {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 1rem;
+        }
+        @media (min-width: 640px) {
+          .grid-posters {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          }
+        }
+        .poster-card {
+          display: block;
+          border-radius: 6px;
+          overflow: hidden;
+          background: #222;
+          transition: all 0.2s ease;
+          border: 2px solid transparent;
+        }
+        .poster-card.current {
+          border-color: var(--nf-red);
+          transform: scale(1.05);
+        }
+        .poster-card:not(.current):hover {
+          transform: scale(1.04);
+          z-index: 2;
+        }
+        .poster-card img {
+          width: 100%;
+          aspect-ratio: 2/3;
+          object-fit: cover;
+          display: block;
+          background-color: #111;
+        }
         .pill-vip-inline {
           display: inline-block;
           background: #f5c518;
@@ -339,4 +408,3 @@ export function MovieDetail() {
     </div>
   )
 }
-
