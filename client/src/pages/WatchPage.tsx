@@ -57,11 +57,12 @@ export function WatchPage() {
   const [epIdx, setEpIdx] = useState(0)
   const playerRef = useRef<HTMLDivElement>(null)
   const isInitialMount = useRef(true)
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Get query params for continuing watch
   const episodeParam = searchParams.get('episode')
   const timeParam = searchParams.get('time')
+  const resumeTimeSec = timeParam ? Math.max(0, parseInt(timeParam, 10) || 0) : 300
 
   useEffect(() => {
     if (!slug) return
@@ -76,8 +77,7 @@ export function WatchPage() {
     if (!user || !detail?.movie?.id) return
     try {
       const episodeNumber = epIdx + 1
-      // Save a checkpoint (5 minutes into the episode)
-      await updateWatchHistory(detail.movie.id, episodeNumber, 300)
+      await updateWatchHistory(detail.movie.id, episodeNumber, resumeTimeSec)
     } catch (error) {
       console.error('Failed to save watch history:', error)
     }
@@ -96,7 +96,7 @@ export function WatchPage() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [epIdx, srvIdx, user, detail?.movie?.id])
+  }, [epIdx, srvIdx, user, detail?.movie?.id, resumeTimeSec])
 
   const m = detail?.movie
 

@@ -7,7 +7,6 @@ export function ContinueWatching() {
   const { user } = useAuth()
   const [history, setHistory] = useState<WatchHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -18,12 +17,10 @@ export function ContinueWatching() {
     const loadHistory = async () => {
       try {
         setLoading(true)
-        setError(null)
         const data = await getWatchHistory()
         setHistory(data)
       } catch (err) {
         console.error('Failed to load watch history:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load history')
       } finally {
         setLoading(false)
       }
