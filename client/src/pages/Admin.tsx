@@ -391,9 +391,9 @@ export function Admin() {
   }
 
   useEffect(() => {
-    if (!user?.isAdmin) return
+    if (!user?.isAdmin && user?.role !== 'moderator') return
     Promise.all([load(), loadCategories()]).catch((e: Error) => setErr(e.message))
-  }, [user?.isAdmin])
+  }, [user?.isAdmin, user?.role])
 
   useEffect(() => {
     if (!selectedMovieForCategories) {
@@ -959,4 +959,3 @@ export function Admin() {
       `}</style>
     </div>
   )
-}
