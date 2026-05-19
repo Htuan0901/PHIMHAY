@@ -4,8 +4,12 @@ const connectDB = require('./db');
 
 const authRoutes = require('./routes/auth');
 const moviesRoutes = require('./routes/movies');
-const adminRoutes = require('./routes/admin');
+const adminRoutes = require('./routes/admin/index');
+const settingsRoutes = require('./routes/settings');
 const categoriesRoutes = require('./routes/categories');
+const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
+const { optionalAuth } = require('./middleware/auth');
+const { maintenanceCheck } = require('./middleware/maintenance');
 const commentsRoutes = require('./routes/comments');
 const ratingsRoutes = require('./routes/ratings');
 const paymentRoutes = require('./routes/payment');
@@ -13,6 +17,7 @@ const historyRoutes = require('./routes/history');
 const { setupSwagger } = require('./docs/swagger');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
   // Log mỗi request đến server
@@ -28,7 +33,8 @@ app.use(
     optionsSuccessStatus: 204
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
+app.use(apiLimiter);
 
 // Middleware kết nối Database cho môi trường Serverless (Vercel)
 app.use(async (req, _res, next) => {
@@ -53,7 +59,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, mongo: mongoose.connection.readyState === 1 });
 });
 
-app.use('/api/auth', authRoutes);
+app.use(optionalAuth);
+app.use(maintenanceCheck);
+
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/movies', (req, res, next) => {
   // Log xác nhận request đã đi qua tầng DB và vào tới router phim
   console.log(`[ROUTE] ${new Date().toISOString()} | Entering moviesRoutes handler...`);

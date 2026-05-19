@@ -3,7 +3,8 @@ function validate(schema, pick = 'body') {
     const value = req[pick];
     const { error, value: parsed } = schema.validate(value, {
       abortEarly: false,
-      stripUnknown: true
+      stripUnknown: true,
+      convert: true
     });
 
     if (error) {

@@ -4,6 +4,7 @@ const querystring = require('querystring');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
+const { logActivity } = require('../services/activityLogService');
 const { createPaymentUrl, verifyReturn } = require('../utils/vnpay');
 const config = require('../config');
 
@@ -63,7 +64,17 @@ router.get('/vnpay-return', async (req, res) => {
     const days = Number(process.env.VIP_DURATION_DAYS) || 365;
     const until = new Date();
     until.setDate(until.getDate() + days);
-    await User.findByIdAndUpdate(payment.userId, { isVip: true, vipExpiresAt: until });
+    await User.findByIdAndUpdate(payment.userId, {
+      isVip: true,
+      vipExpiresAt: until,
+      isUnlimitedVip: false
+    });
+    await logActivity(req, {
+      action: 'vip.subscription',
+      targetType: 'user',
+      targetId: payment.userId,
+      metadata: { txnRef, days }
+    });
   } else {
     payment.status = 'failed';
     payment.vnpResponse = vnp;

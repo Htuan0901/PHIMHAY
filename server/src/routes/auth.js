@@ -1,15 +1,42 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const { signToken, requireAuth } = require('../middleware/auth');
+const { signToken, requireAuth, resolveRole } = require('../middleware/auth');
 const config = require('../config');
 const { validate } = require('../middleware/validate');
 const { updateProfileSchema } = require('../validators/authProfileValidators');
+const { getSettings } = require('../services/settingsService');
+const { logActivity } = require('../services/activityLogService');
 
 const router = express.Router();
 
+function publicUser(u) {
+  const role = resolveRole(u);
+  return {
+    id: u._id,
+    email: u.email,
+    displayName: u.displayName,
+    role,
+    isAdmin: role === 'admin',
+    isVip: u.isVip,
+    vipExpiresAt: u.vipExpiresAt,
+    isUnlimitedVip: !!u.isUnlimitedVip,
+    banned: !!u.banned
+  };
+}
+
 router.post('/register', async (req, res) => {
   try {
+    const settings = await getSettings();
+    const adminSecret = req.headers['x-admin-secret'];
+    const isBootstrapAdmin =
+      config.initialAdminSecret &&
+      adminSecret &&
+      String(adminSecret) === String(config.initialAdminSecret);
+    if (!settings.registrationEnabled && !isBootstrapAdmin) {
+      return res.status(403).json({ error: 'Đăng ký tạm đóng' });
+    }
+
     const { email, password, displayName } = req.body;
     if (!email || !password || !displayName)
       return res.status(400).json({ error: 'Email, mật khẩu và tên đăng nhập là bắt buộc' });
@@ -22,29 +49,20 @@ router.post('/register', async (req, res) => {
     if (displayNameExists) return res.status(409).json({ error: 'Tên đăng nhập đã được dùng' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const adminSecret = req.headers['x-admin-secret'];
-    const isAdmin =
-      config.initialAdminSecret &&
-      adminSecret &&
-      String(adminSecret) === String(config.initialAdminSecret);
     const user = await User.create({
       email: lowerEmail,
       passwordHash,
       displayName: lowerDisplayName,
-      isAdmin: !!isAdmin
+      role: isBootstrapAdmin ? 'admin' : 'user',
+      isAdmin: !!isBootstrapAdmin
     });
     const token = signToken(user);
-    res.status(201).json({
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        displayName: user.displayName,
-        isAdmin: user.isAdmin,
-        isVip: user.isVip,
-        vipExpiresAt: user.vipExpiresAt
-      }
+    await logActivity(req, {
+      action: 'user.register',
+      targetType: 'user',
+      targetId: user._id
     });
+    res.status(201).json({ token, user: publicUser(user) });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Lỗi đăng ký' });
   }
@@ -60,18 +78,18 @@ router.post('/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password || '', user.passwordHash))) {
       return res.status(401).json({ error: 'Sai tên đăng nhập hoặc mật khẩu' });
     }
+    if (user.banned) {
+      return res.status(403).json({ error: 'Tài khoản đã bị khóa' });
+    }
+    user.lastLogin = new Date();
+    await user.save();
     const token = signToken(user);
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        displayName: user.displayName,
-        isAdmin: user.isAdmin,
-        isVip: user.isVip,
-        vipExpiresAt: user.vipExpiresAt
-      }
+    await logActivity(req, {
+      action: 'user.login',
+      targetType: 'user',
+      targetId: user._id
     });
+    res.json({ token, user: publicUser(user) });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Lỗi đăng nhập' });
   }
@@ -80,15 +98,10 @@ router.post('/login', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const u = req.user;
   res.json({
-    id: u._id,
-    email: u.email,
-    displayName: u.displayName,
+    ...publicUser(u),
     phoneNumber: u.phoneNumber || '',
     dateOfBirth: u.dateOfBirth ? u.dateOfBirth.toISOString().slice(0, 10) : null,
-    gender: u.gender || '',
-    isAdmin: u.isAdmin,
-    isVip: u.isVip,
-    vipExpiresAt: u.vipExpiresAt
+    gender: u.gender || ''
   });
 });
 
@@ -136,15 +149,10 @@ router.put('/me', requireAuth, validate(updateProfileSchema), async (req, res) =
     await user.save();
 
     return res.json({
-      id: user._id,
-      email: user.email,
-      displayName: user.displayName,
+      ...publicUser(user),
       phoneNumber: user.phoneNumber || '',
       dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,
-      gender: user.gender || '',
-      isAdmin: user.isAdmin,
-      isVip: user.isVip,
-      vipExpiresAt: user.vipExpiresAt
+      gender: user.gender || ''
     });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Cập nhật thất bại' });

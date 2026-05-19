@@ -1,5 +1,7 @@
 const WatchHistory = require('../models/WatchHistory');
 const Movie = require('../models/Movie');
+const { logActivity } = require('../services/activityLogService');
+const { recordMovieView } = require('../services/movieViewService');
 
 exports.updateHistory = async (req, res) => {
   const { movieId, episode, currentTime } = req.body;
@@ -23,6 +25,16 @@ exports.updateHistory = async (req, res) => {
     } else {
       history = new WatchHistory({ userId, movieId, episode, currentTime });
       await history.save();
+    }
+
+    await recordMovieView(req, movieId, userId);
+    if (currentTime > 0) {
+      await logActivity(req, {
+        action: 'user.watched_movie',
+        targetType: 'movie',
+        targetId: movieId,
+        metadata: { episode, currentTime, title: movie.title }
+      });
     }
 
     res.status(200).json({ message: 'History updated', data: history });

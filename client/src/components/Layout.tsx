@@ -62,7 +62,6 @@ export function Layout() {
               )}
               {user && <UserMenu />}
             </div>
-            {user?.isAdmin && <Link to="/admin">Admin</Link>}
             {!user && (
               <>
                 <Link to="/login">Đăng nhập</Link>

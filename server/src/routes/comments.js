@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Comment = require('../models/Comment');
 const Movie = require('../models/Movie');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
+const { getSettings } = require('../services/settingsService');
 
 const router = express.Router();
 
@@ -37,6 +38,10 @@ router.get('/movie/:movieId', optionalAuth, async (req, res) => {
 
 router.post('/movie/:movieId', requireAuth, async (req, res) => {
   try {
+    const settings = await getSettings();
+    if (!settings.commentsEnabled) {
+      return res.status(403).json({ error: 'Bình luận đang tắt' });
+    }
     if (!mongoose.isValidObjectId(req.params.movieId)) {
       return res.status(400).json({ error: 'movieId không hợp lệ' });
     }

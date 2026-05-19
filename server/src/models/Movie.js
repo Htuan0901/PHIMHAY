@@ -26,7 +26,8 @@ const movieSchema = new mongoose.Schema(
      */
     commentRatingPolicy: { type: String, enum: ['public', 'members'], default: 'public' },
     isActive: { type: Boolean, default: true },
-    externalId: { type: String, default: '' }
+    externalId: { type: String, default: '' },
+    viewCount: { type: Number, default: 0, min: 0 }
   },
   { timestamps: true }
 );

@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -410,7 +409,6 @@ export function Admin() {
   }
 
   if (loading) return <p className="page muted">…</p>
-  if (!user?.isAdmin) return <Navigate to="/" replace />
 
   async function importSlug() {
     const normalizedSlug = slug.trim()
@@ -570,7 +568,7 @@ export function Admin() {
   }
 
   return (
-    <div className="page admin-page">
+    <div className="admin-content-page">
       {editingCategory && (
         <EditCategoryModal
           category={editingCategory}

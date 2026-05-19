@@ -16,9 +16,12 @@ export type User = {
   phoneNumber?: string
   dateOfBirth?: string | null
   gender?: string
+  role?: 'user' | 'moderator' | 'admin'
   isAdmin: boolean
   isVip: boolean
   vipExpiresAt: string | null
+  isUnlimitedVip?: boolean
+  banned?: boolean
 }
 
 type AuthState = {
@@ -87,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isVipActive = useCallback(() => {
     if (!user?.isVip) return false
+    if (user.isUnlimitedVip) return true
     if (!user.vipExpiresAt) return true
     return new Date(user.vipExpiresAt).getTime() > Date.now()
   }, [user])

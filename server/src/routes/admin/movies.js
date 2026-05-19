@@ -1,11 +1,9 @@
 const express = require('express');
-const Movie = require('../models/Movie');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
-const { fetchMovieBySlug } = require('../services/phimapi');
+const Movie = require('../../models/Movie');
+const { fetchMovieBySlug } = require('../../services/phimapi');
+const { logActivity } = require('../../services/activityLogService');
 
 const router = express.Router();
-
-router.use(requireAuth, requireAdmin);
 
 router.get('/movies', async (req, res) => {
   const items = await Movie.find().sort({ updatedAt: -1 }).lean();
@@ -35,6 +33,12 @@ router.post('/movies/import', async (req, res) => {
       commentRatingPolicy: 'public',
       externalId: m._id ? String(m._id) : ''
     });
+    await logActivity(req, {
+      action: 'admin.movie.import',
+      targetType: 'movie',
+      targetId: doc._id,
+      metadata: { slug }
+    });
     res.status(201).json({ movie: doc });
   } catch (e) {
     const status = e.status || 500;
@@ -62,12 +66,23 @@ router.patch('/movies/:id', async (req, res) => {
   if (title !== undefined) movie.title = String(title);
   if (content !== undefined) movie.content = String(content);
   await movie.save();
+  await logActivity(req, {
+    action: 'admin.movie.update',
+    targetType: 'movie',
+    targetId: movie._id,
+    metadata: req.body
+  });
   res.json({ movie });
 });
 
 router.delete('/movies/:id', async (req, res) => {
   const r = await Movie.findByIdAndDelete(req.params.id);
   if (!r) return res.status(404).json({ error: 'Không tìm thấy' });
+  await logActivity(req, {
+    action: 'admin.movie.delete',
+    targetType: 'movie',
+    targetId: req.params.id
+  });
   res.json({ ok: true });
 });
 
