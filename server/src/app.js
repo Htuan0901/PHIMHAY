@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./db');
 
 const authRoutes = require('./routes/auth');
@@ -19,8 +21,11 @@ const { setupSwagger } = require('./docs/swagger');
 const app = express();
 app.set('trust proxy', 1);
 
+const isProd = process.env.NODE_ENV === 'production';
+const clientDist = path.join(__dirname, '../../client/dist');
+const hasClientBuild = isProd && fs.existsSync(clientDist);
+
 app.use((req, res, next) => {
-  // Log mỗi request đến server
   console.log(`[REQUEST START] ${new Date().toISOString()} | ${req.method} ${req.originalUrl || req.url}`);
   next();
 });
@@ -36,7 +41,6 @@ app.use(
 app.use(express.json({ limit: '5mb' }));
 app.use(apiLimiter);
 
-// Middleware kết nối Database cho môi trường Serverless (Vercel)
 app.use(async (req, _res, next) => {
   try {
     console.log(`[DB CHECK] ${new Date().toISOString()} | Checking connection for ${req.url}...`);
@@ -49,10 +53,11 @@ app.use(async (req, _res, next) => {
   }
 });
 
-// Thêm route cho trang chủ để test server sống hay chết
-app.get('/', (req, res) => {
-  res.json({ message: 'Server is running!', time: new Date() });
-});
+if (!hasClientBuild) {
+  app.get('/', (req, res) => {
+    res.json({ message: 'Server is running!', time: new Date() });
+  });
+}
 
 app.get('/api/health', (_req, res) => {
   const mongoose = require('mongoose');
@@ -65,7 +70,6 @@ app.use(maintenanceCheck);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/movies', (req, res, next) => {
-  // Log xác nhận request đã đi qua tầng DB và vào tới router phim
   console.log(`[ROUTE] ${new Date().toISOString()} | Entering moviesRoutes handler...`);
   next();
 }, moviesRoutes);
@@ -77,9 +81,20 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/history', historyRoutes);
 setupSwagger(app);
 
-// Xử lý lỗi 404 (Không tìm thấy route) - Để tránh treo request
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+if (hasClientBuild) {
+  app.use(express.static(clientDist));
+
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
+app.use((req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+  }
+  res.status(404).send('Not Found');
 });
 
 app.use((err, _req, res, _next) => {

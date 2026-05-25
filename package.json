@@ -1,11 +1,14 @@
 {
   "name": "phimhay",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev:api": "npm run dev --prefix server",
-    "dev:client": "npm run dev --prefix client"
-  },
-  "dependencies": {
-    "vite": "^8.0.9"
+    "dev:client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client",
+    "build": "npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client",
+    "start": "npm start --prefix server"
   }
 }
