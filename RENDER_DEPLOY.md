@@ -41,6 +41,21 @@ Network Access → allow `0.0.0.0/0` for Render.
 2. `https://your-app.onrender.com/api/health` → `{ ok: true, mongo: true }`
 3. Deep links (e.g. `/admin/users`) work via SPA fallback
 
+## Troubleshooting: "Exited with status 1"
+
+Build OK but deploy crashes → almost always **runtime** (not Vite build).
+
+| Cause | Fix |
+|-------|-----|
+| Missing `MONGODB_URI` | Add Atlas connection string in Render env |
+| Atlas blocks Render | Network Access → `0.0.0.0/0` |
+| Missing `JWT_SECRET` | Set a long random secret |
+| Missing `NODE_ENV` | Set to `production` (serves `client/dist`) |
+| Wrong Start Command | Use `npm start` (repo root) or `cd server && npm start` |
+| Wrong Start path | Do **not** use `node server/index.js` (file does not exist) — use `server/src/index.js` via `npm start --prefix server` |
+
+Check **Logs** tab on Render after deploy; look for `[FATAL]` lines.
+
 ## Blueprint
 
 Repo includes [`render.yaml`](render.yaml) for Render Blueprint deploy.
