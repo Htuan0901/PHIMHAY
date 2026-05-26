@@ -43,18 +43,29 @@ Network Access → allow `0.0.0.0/0` for Render.
 
 ## Troubleshooting: "Exited with status 1"
 
-Build OK but deploy crashes → almost always **runtime** (not Vite build).
+Build OK but deploy crashes → check **Logs** for `[FATAL]`:
 
-| Cause | Fix |
-|-------|-----|
-| Missing `MONGODB_URI` | Add Atlas connection string in Render env |
-| Atlas blocks Render | Network Access → `0.0.0.0/0` |
-| Missing `JWT_SECRET` | Set a long random secret |
-| Missing `NODE_ENV` | Set to `production` (serves `client/dist`) |
-| Wrong Start Command | Use `npm start` (repo root) or `cd server && npm start` |
-| Wrong Start path | Do **not** use `node server/index.js` (file does not exist) — use `server/src/index.js` via `npm start --prefix server` |
+| Log message | Fix |
+|-------------|-----|
+| `MONGODB_URI is not set` | Render → Environment → add `MONGODB_URI` (Atlas URI) |
+| `JWT_SECRET is not set` | Add `JWT_SECRET` (random string, not empty) |
+| `MongoDB connection failed` | Atlas → Network Access → `0.0.0.0/0`; verify username/password in URI |
+| `Cannot find module` | Start Command must be `npm start` (root) or `cd server && npm start` |
 
-Check **Logs** tab on Render after deploy; look for `[FATAL]` lines.
+**Required env on Render:**
+
+```
+NODE_ENV=production
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=<long-random-string>
+CLIENT_URL=https://your-app.onrender.com
+VNP_RETURN_URL=https://your-app.onrender.com/api/payment/vnpay-return
+```
+
+**Start Command:** `npm start`  
+**Build Command:** `npm install && npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client`
+
+Do **not** use `node server/index.js` — entry file is `server/src/index.js`.
 
 ## Blueprint
 
