@@ -21,9 +21,10 @@ const { setupSwagger } = require('./docs/swagger');
 const app = express();
 app.set('trust proxy', 1);
 
-const isProd = process.env.NODE_ENV === 'production';
 const clientDist = path.join(__dirname, '../../client/dist');
-const hasClientBuild = isProd && fs.existsSync(clientDist);
+// Serve SPA whenever we have a Vite build output.
+// This also helps when Render doesn't expose NODE_ENV as expected.
+const hasClientBuild = fs.existsSync(clientDist);
 
 app.use((req, res, next) => {
   console.log(`[REQUEST START] ${new Date().toISOString()} | ${req.method} ${req.originalUrl || req.url}`);
