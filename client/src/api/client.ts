@@ -71,6 +71,11 @@ export async function getWatchHistory() {
   return api<WatchHistoryItem[]>('/api/history')
 }
 
+/** Homepage: one row per series/movie, latest episode only */
+export async function getContinueWatching(limit = 6) {
+  return api<WatchHistoryItem[]>(`/api/history/continue?limit=${limit}`)
+}
+
 export async function deleteWatchHistoryItem(historyId: string) {
   return api(`/api/history/${historyId}`, { method: 'DELETE' })
 }

@@ -10,4 +10,6 @@ const watchHistorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+watchHistorySchema.index({ userId: 1, updatedAt: -1 });
+
 module.exports = mongoose.model('WatchHistory', watchHistorySchema);

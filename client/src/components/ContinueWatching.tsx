@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getWatchHistory, type WatchHistoryItem } from '../api/client'
+import { getContinueWatching, type WatchHistoryItem } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
 export function ContinueWatching() {
@@ -17,7 +17,7 @@ export function ContinueWatching() {
     const loadHistory = async () => {
       try {
         setLoading(true)
-        const data = await getWatchHistory()
+        const data = await getContinueWatching(6)
         setHistory(data)
       } catch (err) {
         console.error('Failed to load watch history:', err)
@@ -43,7 +43,7 @@ export function ContinueWatching() {
     <section className="mb-8">
       <h2 className="text-2xl font-bold mb-4">Tiếp tục xem</h2>
       <div className="grid-posters">
-        {history.slice(0, 6).map((item) => (
+        {history.map((item) => (
           <Link
             key={item._id}
             to={`/xem-phim/${item.movieId.slug}?episode=${item.episode}&time=${Math.floor(

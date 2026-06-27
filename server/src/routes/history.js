@@ -1,12 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { updateHistory, getHistory, deleteHistory, clearAllHistory } = require('../controllers/watchHistoryController');
+const {
+  updateHistory,
+  getHistory,
+  getContinueWatching,
+  deleteHistory,
+  clearAllHistory
+} = require('../controllers/watchHistoryController');
 const { requireAuth } = require('../middleware/auth');
 
 // Update or create watch history
 router.post('/', requireAuth, updateHistory);
 
-// Get user's watch history
+// Continue watching (one entry per series/movie)
+router.get('/continue', requireAuth, getContinueWatching);
+
+// Full watch history log
 router.get('/', requireAuth, getHistory);
 
 // Delete specific history item

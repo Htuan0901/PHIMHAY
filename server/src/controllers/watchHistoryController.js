@@ -58,6 +58,42 @@ exports.getHistory = async (req, res) => {
   }
 };
 
+/** One entry per series/movie — most recently watched episode only (for homepage). */
+function groupKeyForHistoryItem(item) {
+  const movie = item.movieId;
+  if (!movie) return null;
+  const seriesId = movie.seriesId && String(movie.seriesId).trim();
+  if (seriesId) return `series:${seriesId}`;
+  return `movie:${movie._id}`;
+}
+
+exports.getContinueWatching = async (req, res) => {
+  const userId = req.user._id;
+  const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 6));
+
+  try {
+    const history = await WatchHistory.find({ userId })
+      .populate('movieId', 'title slug posterUrl thumbUrl seriesId')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const byGroup = new Map();
+    for (const item of history) {
+      const key = groupKeyForHistoryItem(item);
+      if (!key || byGroup.has(key)) continue;
+      byGroup.set(key, item);
+    }
+
+    const items = Array.from(byGroup.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, limit);
+
+    res.status(200).json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.deleteHistory = async (req, res) => {
   const { historyId } = req.params;
   const userId = req.user._id;
